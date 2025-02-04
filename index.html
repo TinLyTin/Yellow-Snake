@@ -1,17 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Unsolvablr - Neon Snake</title>
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
-        /* ... keep previous endMessage styles ... */
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js Snake Game</title>
+  <style>
+    /* Reset margins and disable scrollbars */
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+    }
+    /* End-of-game message styling */
+    #endMessage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 2em;
+      text-align: center;
+      display: none;
+      z-index: 1000;
+    }
+  </style>
 </head>
 <body>
-    <!-- ... keep previous body content ... -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="script.js"></script>
-</body>
 </html>
