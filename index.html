@@ -5,12 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Three.js Neon Rainbow Cube Game</title>
   <style>
+    /* Import Futura Medium font */
+    @font-face {
+      font-family: 'Futura Medium';
+      src: url('FuturaMedium.woff2') format('woff2'),
+           url('FuturaMedium.woff') format('woff');
+      font-weight: normal;
+      font-style: normal;
+    }
+
     /* Reset margins and disable scrollbars */
     body {
       margin: 0;
       overflow: hidden;
       background-color: #000;
+      font-family: 'Futura Medium', Futura, sans-serif;
     }
+
     /* End-of-game message styling */
     #endMessage {
       position: absolute;
@@ -23,11 +34,61 @@
       display: none;
       z-index: 1000;
     }
+
+    /* Tagline styling to preserve newlines */
+    #tagline {
+      white-space: pre-wrap;
+    }
+
+    /* Scoreboard styling with explicit Futura Medium font */
+    #scoreboard {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 10px 20px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #39FF14; /* Neon green */
+      font-size: 24px;
+      font-weight: bold;
+      border: 2px solid #39FF14;
+      border-radius: 5px;
+      z-index: 1000;
+      font-family: 'Futura Medium', Futura, sans-serif;
+    }
+
+    /* Glitch animation keyframes */
+    @keyframes glitch {
+      0%   { transform: translate(0, 0); opacity: 1; }
+      20%  { transform: translate(-2px, 2px); opacity: 0.8; }
+      40%  { transform: translate(2px, -2px); opacity: 0.6; }
+      60%  { transform: translate(-2px, -2px); opacity: 0.8; }
+      80%  { transform: translate(2px, 2px); opacity: 1; }
+      100% { transform: translate(0, 0); opacity: 1; }
+    }
+    
+    /* Glitch class to apply the animation */
+    .glitch {
+      animation: glitch 0.5s ease-in-out;
+    }
   </style>
 </head>
 <body>
+  <!-- Scoreboard -->
+  <div id="scoreboard">Jigsaw Puzzle Pieces: 0</div>
+
   <!-- End-of-game message container -->
   <div id="endMessage">
+    <div id="tagline"></div>
+    <div id="company"></div>
+  </div>
+
+  <!-- Three.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- External Game Script -->
+  <script src="script.js"></script>
+</body>
+</html>
+
     <div id="tagline"></div>
     <div id="company"></div>
   </div>
