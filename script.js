@@ -1,271 +1,325 @@
-// Resolve __dirname if needed (for example purposes)
-__dirname = window.location.href.replace(/\/[^\/]*$/, '');
+// Resolve __dirname if needed
+    __dirname = window.location.href.replace(/\/[^\/]*$/, '');
 
-// --- Game Constants and Global Variables ---
-const CUBE_SIZE = 50;
-const SNAKE_COLOR = 0xFFFF00;
-const PARTICLE_COLOR = 0x00FFD1;
+    // --- Game Constants and Global Variables ---
+    const CUBE_SIZE = 50;
+    const SNAKE_COLOR = 0xFFFF00;
+    const PARTICLE_COLOR = 0x00FFD1;
 
-let scene, camera, renderer;
-let cube; // The rainbow cube object (wireframe)
-let snake = [];
-let particles = [];
-let dir = new THREE.Vector3(1, 0, 0);
-let speed = 0.1;
-let score = 0;
-let rotateSpeed = 0.005;
-let autoRotate = true;
-let cameraDistance = 80;
+    let scene, camera, renderer;
+    let cube; // The rainbow cube (wireframe)
+    let snake = [];
+    let particles = [];
+    let dir = new THREE.Vector3(1, 0, 0);
+    let speed = 0.1;
+    let score = 0;
+    let rotateSpeed = 0.005;
+    let autoRotate = true;
+    let cameraDistance = 80;
 
-// --- Initialization ---
-function init() {
-  // Scene
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
+    // --- Initialization ---
+    function init() {
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000000);
 
-  // Lighting
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-  scene.add(ambientLight);
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
 
-  const pointLight = new THREE.PointLight(0xffffff, 1);
-  pointLight.position.set(0, 0, 50);
-  scene.add(pointLight);
+      const pointLight = new THREE.PointLight(0xffffff, 1);
+      pointLight.position.set(0, 0, 50);
+      scene.add(pointLight);
 
-  // Renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
 
-  // Camera
-  camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
-  camera.position.z = cameraDistance;
+      // Camera
+      camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.z = cameraDistance;
 
-  // Create game elements
-  cube = createRainbowCube();
-  createSnake();
-  createParticles(100);
+      // Create game elements
+      cube = createRainbowCube();
+      createVerticalRainbowLines();  // Add neon vertical lines on cube faces
+      createSnake();
+      createParticles(100);
 
-  // Event Listeners
-  window.addEventListener('keydown', handleKeys);
-  window.addEventListener('wheel', handleWheel);
-  window.addEventListener('resize', onWindowResize);
-}
-
-// --- Create Rainbow Cube ---
-function createRainbowCube() {
-  const cubeSize = CUBE_SIZE;
-  const colors = [
-    0xFF0000, // Red
-    0xFF7F00, // Orange
-    0xFFFF00, // Yellow
-    0x00FF00, // Green
-    0x0000FF, // Blue
-    0x4B0082  // Indigo
-  ];
-
-  // Create box geometry and extract edges
-  const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-  const edges = new THREE.EdgesGeometry(cubeGeometry);
-
-  // Create a group to hold the colored lines
-  const lineGroup = new THREE.Group();
-
-  const positions = edges.attributes.position.array;
-  // Each edge has 2 points (6 numbers). Loop over the array by steps of 6.
-  for (let i = 0, edgeIndex = 0; i < positions.length; i += 6, edgeIndex++) {
-    const color = new THREE.Color(colors[edgeIndex % colors.length]);
-
-    const lineMaterial = new THREE.LineBasicMaterial({
-      color: color,
-      emissive: color,
-      emissiveIntensity: 2,
-      transparent: true,
-      opacity: 0.8,
-      linewidth: 2
-    });
-
-    const segmentPositions = new Float32Array([
-      positions[i], positions[i + 1], positions[i + 2],
-      positions[i + 3], positions[i + 4], positions[i + 5]
-    ]);
-
-    const lineGeometry = new THREE.BufferGeometry();
-    lineGeometry.setAttribute('position', new THREE.BufferAttribute(segmentPositions, 3));
-
-    const line = new THREE.Line(lineGeometry, lineMaterial);
-    lineGroup.add(line);
-  }
-
-  // Set up userData for pulsing animation (pulsing value and direction)
-  lineGroup.userData.pulse = 0;
-  lineGroup.userData.pulseDirection = 1;
-
-  scene.add(lineGroup);
-  return lineGroup;
-}
-
-// --- Create Snake ---
-function createSnake() {
-  snake = [];
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshStandardMaterial({
-    color: SNAKE_COLOR,
-    emissive: SNAKE_COLOR,
-    emissiveIntensity: 2
-  });
-
-  // Create initial snake segments; position them along the negative X axis.
-  for (let i = 0; i < 5; i++) {
-    const segment = new THREE.Mesh(geometry, material);
-    segment.position.set(-i, 0, 0);
-    snake.push(segment);
-    scene.add(segment);
-  }
-}
-
-// --- Create Particles ---
-function createParticles(count) {
-  const geometry = new THREE.SphereGeometry(0.5, 8, 8);
-  const material = new THREE.MeshStandardMaterial({
-    color: PARTICLE_COLOR,
-    emissive: PARTICLE_COLOR,
-    emissiveIntensity: 1
-  });
-
-  for (let i = 0; i < count; i++) {
-    const particle = new THREE.Mesh(geometry, material);
-    particle.position.set(
-      THREE.MathUtils.randFloatSpread(CUBE_SIZE),
-      THREE.MathUtils.randFloatSpread(CUBE_SIZE),
-      THREE.MathUtils.randFloatSpread(CUBE_SIZE)
-    );
-    particles.push(particle);
-    scene.add(particle);
-  }
-}
-
-// --- Event Handlers ---
-function handleKeys(event) {
-  const key = event.key.toLowerCase();
-
-  // Toggle auto-rotation with 'R'
-  if (key === 'r') {
-    autoRotate = !autoRotate;
-  }
-
-  // Manual cube rotation with 'Q' and 'E'
-  if (cube) {
-    if (key === 'q') cube.rotation.y += 0.1;
-    if (key === 'e') cube.rotation.y -= 0.1;
-  }
-
-  // Snake movement controls (only allow perpendicular changes)
-  const currentDir = dir.clone();
-  if (key === 'arrowup' && currentDir.y === 0) dir.set(0, 1, 0);
-  if (key === 'arrowdown' && currentDir.y === 0) dir.set(0, -1, 0);
-  if (key === 'arrowleft' && currentDir.x === 0) dir.set(-1, 0, 0);
-  if (key === 'arrowright' && currentDir.x === 0) dir.set(1, 0, 0);
-  if (key === 'w' && currentDir.z === 0) dir.set(0, 0, 1);
-  if (key === 's' && currentDir.z === 0) dir.set(0, 0, -1);
-}
-
-function handleWheel(event) {
-  // Adjust camera distance based on wheel delta
-  cameraDistance += event.deltaY * 0.05;
-  cameraDistance = Math.max(10, Math.min(cameraDistance, 200));
-  camera.position.z = cameraDistance;
-}
-
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-// --- Animation Loop ---
-function animate() {
-  requestAnimationFrame(animate);
-
-  // --- Update Rainbow Cube: pulsing and auto-rotation ---
-  if (cube) {
-    // Update pulsing value
-    cube.userData.pulse += cube.userData.pulseDirection * 0.01;
-    if (cube.userData.pulse > 1 || cube.userData.pulse < 0) {
-      cube.userData.pulseDirection *= -1;
+      // Event Listeners
+      window.addEventListener('keydown', handleKeys);
+      window.addEventListener('wheel', handleWheel);
+      window.addEventListener('resize', onWindowResize);
     }
-    // Adjust opacity of each line based on the pulse value
-    cube.children.forEach(line => {
-      line.material.opacity = 0.5 + 0.3 * cube.userData.pulse;
-    });
 
-    // Auto-rotate the cube if enabled
-    if (autoRotate) {
-      cube.rotation.y += rotateSpeed;
+    // --- Create Rainbow Cube (Edges) ---
+    function createRainbowCube() {
+      const cubeSize = CUBE_SIZE;
+      const colors = [
+        0xFF0000, // Red
+        0xFF7F00, // Orange
+        0xFFFF00, // Yellow
+        0x00FF00, // Green
+        0x0000FF, // Blue
+        0x4B0082  // Indigo
+        // (Initially 6 colors; neon lines below use 7 colors including violet)
+      ];
+
+      // Create box geometry and extract edges
+      const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+      const edges = new THREE.EdgesGeometry(cubeGeometry);
+
+      // Create a group to hold the colored edge lines
+      const lineGroup = new THREE.Group();
+
+      const positions = edges.attributes.position.array;
+      // Each edge has 2 points (6 numbers). Loop by steps of 6.
+      for (let i = 0, edgeIndex = 0; i < positions.length; i += 6, edgeIndex++) {
+        const color = new THREE.Color(colors[edgeIndex % colors.length]);
+
+        const lineMaterial = new THREE.LineBasicMaterial({
+          color: color,
+          emissive: color,
+          emissiveIntensity: 2,
+          transparent: true,
+          opacity: 0.8,
+          linewidth: 2
+        });
+
+        const segmentPositions = new Float32Array([
+          positions[i], positions[i + 1], positions[i + 2],
+          positions[i + 3], positions[i + 4], positions[i + 5]
+        ]);
+
+        const lineGeometry = new THREE.BufferGeometry();
+        lineGeometry.setAttribute('position', new THREE.BufferAttribute(segmentPositions, 3));
+
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        lineGroup.add(line);
+      }
+
+      // Set up pulsing data for animation
+      lineGroup.userData.pulse = 0;
+      lineGroup.userData.pulseDirection = 1;
+
+      scene.add(lineGroup);
+      return lineGroup;
     }
-  }
 
-  // --- Update Snake Position ---
-  // Compute new head position without mutating the original 'dir'
-  const head = snake[0].position.clone().add(dir.clone().multiplyScalar(speed));
+    // --- Create Neon Vertical Rainbow Lines on Cube Faces ---
+    function createVerticalRainbowLines() {
+      // Define 7 neon colors: red, orange, yellow, green, blue, indigo, violet
+      const neonColors = [0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0x9400D3];
+      const group = new THREE.Group();
 
-  // Wrap the head position within the cube boundaries
-  ['x', 'y', 'z'].forEach(axis => {
-    head[axis] = ((head[axis] + CUBE_SIZE / 2) % CUBE_SIZE) - CUBE_SIZE / 2;
-  });
+      // Helper to create a vertical line between two points
+      function createLine(start, end, color) {
+        const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+        const material = new THREE.LineBasicMaterial({
+          color: color,
+          linewidth: 2,
+          transparent: true,
+          opacity: 0.9
+        });
+        return new THREE.Line(geometry, material);
+      }
 
-  // --- Collision Detection with Particles ---
-  // Iterate backwards so that removing particles doesn’t affect the loop.
-  for (let i = particles.length - 1; i >= 0; i--) {
-    if (head.distanceTo(particles[i].position) < 1) {
-      scene.remove(particles[i]);
-      particles.splice(i, 1);
-      speed *= 1.02;
-      score++;
+      // For the vertical faces, we draw lines running along the global y-axis.
+      // Faces: right (x = CUBE_SIZE/2), left (x = -CUBE_SIZE/2), front (z = CUBE_SIZE/2), back (z = -CUBE_SIZE/2).
 
-      if (score === 100) {
-        endGame();
+      // Right face (x = +CUBE_SIZE/2): vary z from left to right on the face.
+      for (let i = 0; i < 7; i++) {
+        const t = i / 6; // 0 to 1
+        const z = -CUBE_SIZE / 2 + t * CUBE_SIZE;
+        const start = new THREE.Vector3(CUBE_SIZE / 2, CUBE_SIZE / 2, z);
+        const end = new THREE.Vector3(CUBE_SIZE / 2, -CUBE_SIZE / 2, z);
+        group.add(createLine(start, end, neonColors[i]));
+      }
+
+      // Left face (x = -CUBE_SIZE/2): vary z.
+      for (let i = 0; i < 7; i++) {
+        const t = i / 6;
+        const z = -CUBE_SIZE / 2 + t * CUBE_SIZE;
+        const start = new THREE.Vector3(-CUBE_SIZE / 2, CUBE_SIZE / 2, z);
+        const end = new THREE.Vector3(-CUBE_SIZE / 2, -CUBE_SIZE / 2, z);
+        group.add(createLine(start, end, neonColors[i]));
+      }
+
+      // Front face (z = +CUBE_SIZE/2): vary x.
+      for (let i = 0; i < 7; i++) {
+        const t = i / 6;
+        const x = -CUBE_SIZE / 2 + t * CUBE_SIZE;
+        const start = new THREE.Vector3(x, CUBE_SIZE / 2, CUBE_SIZE / 2);
+        const end = new THREE.Vector3(x, -CUBE_SIZE / 2, CUBE_SIZE / 2);
+        group.add(createLine(start, end, neonColors[i]));
+      }
+
+      // Back face (z = -CUBE_SIZE/2): vary x.
+      for (let i = 0; i < 7; i++) {
+        const t = i / 6;
+        const x = -CUBE_SIZE / 2 + t * CUBE_SIZE;
+        const start = new THREE.Vector3(x, CUBE_SIZE / 2, -CUBE_SIZE / 2);
+        const end = new THREE.Vector3(x, -CUBE_SIZE / 2, -CUBE_SIZE / 2);
+        group.add(createLine(start, end, neonColors[i]));
+      }
+
+      // Add the neon lines group to the scene
+      scene.add(group);
+      return group;
+    }
+
+    // --- Create Snake ---
+    function createSnake() {
+      snake = [];
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshStandardMaterial({
+        color: SNAKE_COLOR,
+        emissive: SNAKE_COLOR,
+        emissiveIntensity: 2
+      });
+
+      // Create initial snake segments along the negative X axis.
+      for (let i = 0; i < 5; i++) {
+        const segment = new THREE.Mesh(geometry, material);
+        segment.position.set(-i, 0, 0);
+        snake.push(segment);
+        scene.add(segment);
       }
     }
-  }
 
-  // --- Update Snake Segments ---
-  // Move each segment to the position of the segment ahead of it.
-  for (let i = snake.length - 1; i > 0; i--) {
-    snake[i].position.copy(snake[i - 1].position);
-  }
-  // Update head position
-  snake[0].position.copy(head);
+    // --- Create Particles ---
+    function createParticles(count) {
+      const geometry = new THREE.SphereGeometry(0.5, 8, 8);
+      const material = new THREE.MeshStandardMaterial({
+        color: PARTICLE_COLOR,
+        emissive: PARTICLE_COLOR,
+        emissiveIntensity: 1
+      });
 
-  renderer.render(scene, camera);
-}
+      for (let i = 0; i < count; i++) {
+        const particle = new THREE.Mesh(geometry, material);
+        particle.position.set(
+          THREE.MathUtils.randFloatSpread(CUBE_SIZE),
+          THREE.MathUtils.randFloatSpread(CUBE_SIZE),
+          THREE.MathUtils.randFloatSpread(CUBE_SIZE)
+        );
+        particles.push(particle);
+        scene.add(particle);
+      }
+    }
 
-// --- End Game ---
-function endGame() {
-  const endMessage = document.getElementById('endMessage');
-  const tagline = document.getElementById('tagline');
-  const company = document.getElementById('company');
+    // --- Event Handlers ---
+    function handleKeys(event) {
+      const key = event.key.toLowerCase();
 
-  if (endMessage && tagline && company) {
-    endMessage.style.display = 'block';
-    tagline.textContent = 'When The Pieces Fall Into Place, The Magic Unfolds';
-    company.textContent = '';
+      // Toggle auto-rotation with 'R'
+      if (key === 'r') {
+        autoRotate = !autoRotate;
+      }
 
-    setTimeout(() => {
-      tagline.style.transform = 'rotate(360deg)';
-      tagline.style.transition = 'transform 2s';
-      setTimeout(() => {
-        tagline.textContent = 'Unsolvablr';
-        company.textContent = 'a jigsaw company';
-      }, 2000);
-    }, 3000);
-  }
-}
+      // Manual cube rotation with 'Q' and 'E'
+      if (cube) {
+        if (key === 'q') cube.rotation.y += 0.1;
+        if (key === 'e') cube.rotation.y -= 0.1;
+      }
 
-// --- Start the Game ---
-init();
-animate();
+      // Snake movement controls (only allow perpendicular changes)
+      const currentDir = dir.clone();
+      if (key === 'arrowup' && currentDir.y === 0) dir.set(0, 1, 0);
+      if (key === 'arrowdown' && currentDir.y === 0) dir.set(0, -1, 0);
+      if (key === 'arrowleft' && currentDir.x === 0) dir.set(-1, 0, 0);
+      if (key === 'arrowright' && currentDir.x === 0) dir.set(1, 0, 0);
+      if (key === 'w' && currentDir.z === 0) dir.set(0, 0, 1);
+      if (key === 's' && currentDir.z === 0) dir.set(0, 0, -1);
+    }
+
+    function handleWheel(event) {
+      // Adjust camera distance based on wheel delta
+      cameraDistance += event.deltaY * 0.05;
+      cameraDistance = Math.max(10, Math.min(cameraDistance, 200));
+      camera.position.z = cameraDistance;
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // --- Animation Loop ---
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // --- Update Rainbow Cube (pulsing and auto-rotation) ---
+      if (cube) {
+        cube.userData.pulse += cube.userData.pulseDirection * 0.01;
+        if (cube.userData.pulse > 1 || cube.userData.pulse < 0) {
+          cube.userData.pulseDirection *= -1;
+        }
+        cube.children.forEach(line => {
+          line.material.opacity = 0.5 + 0.3 * cube.userData.pulse;
+        });
+
+        if (autoRotate) {
+          cube.rotation.y += rotateSpeed;
+        }
+      }
+
+      // --- Update Snake Position ---
+      const head = snake[0].position.clone().add(dir.clone().multiplyScalar(speed));
+      ['x', 'y', 'z'].forEach(axis => {
+        head[axis] = ((head[axis] + CUBE_SIZE / 2) % CUBE_SIZE) - CUBE_SIZE / 2;
+      });
+
+      // --- Collision Detection with Particles ---
+      for (let i = particles.length - 1; i >= 0; i--) {
+        if (head.distanceTo(particles[i].position) < 1) {
+          scene.remove(particles[i]);
+          particles.splice(i, 1);
+          speed *= 1.02;
+          score++;
+          if (score === 100) {
+            endGame();
+          }
+        }
+      }
+
+      // --- Update Snake Segments ---
+      for (let i = snake.length - 1; i > 0; i--) {
+        snake[i].position.copy(snake[i - 1].position);
+      }
+      snake[0].position.copy(head);
+
+      renderer.render(scene, camera);
+    }
+
+    // --- End Game ---
+    function endGame() {
+      const endMessage = document.getElementById('endMessage');
+      const tagline = document.getElementById('tagline');
+      const company = document.getElementById('company');
+
+      if (endMessage && tagline && company) {
+        endMessage.style.display = 'block';
+        tagline.textContent = 'When The Pieces Fall Into Place, The Magic Unfolds';
+        company.textContent = '';
+
+        setTimeout(() => {
+          tagline.style.transform = 'rotate(360deg)';
+          tagline.style.transition = 'transform 2s';
+          setTimeout(() => {
+            tagline.textContent = 'Unsolvablr';
+            company.textContent = 'a jigsaw company';
+          }, 2000);
+        }, 3000);
+      }
+    }
+
+    // --- Start the Game ---
+    init();
+    animate();
