@@ -1,4 +1,3 @@
-// GitHub Pages compatibility fix
 __dirname = window.location.href.replace(/\/[^\/]*$/, '');
 
 let scene, camera, renderer, snake, particles = [];
@@ -9,129 +8,63 @@ const CUBE_SIZE = 50;
 const SNAKE_COLOR = 0xFFFF00;
 const PARTICLE_COLOR = 0x00FFD1;
 
-init();
-createParticles(100);
-animate();
-
 function init() {
+    // 1. Set black background
     scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    
+    // 2. Add lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    
+    // 3. Initialize camera and renderer
     camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+    // 4. Create game elements
     createRainbowCube();
     createSnake();
+    createParticles(100);
     
+    // 5. Position camera
     camera.position.z = 80;
     window.addEventListener('keydown', handleKeys);
-}
-
-function createRainbowCube() {
-    const colors = [0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082];
-    const materials = colors.map(color => new THREE.MeshPhongMaterial({
-        color,
-        emissive: color,
-        transparent: true,
-        opacity: 0.2,
-        side: THREE.DoubleSide
-    }));
-
-    const cube = new THREE.Mesh(
-        new THREE.BoxGeometry(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE),
-        materials
-    );
-    scene.add(cube);
-}
-
-function createSnake() {
-    snake = [];
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshPhongMaterial({
-        color: SNAKE_COLOR,
-        emissive: SNAKE_COLOR
-    });
-
-    for(let i = 0; i < 5; i++) {
-        const segment = new THREE.Mesh(geometry, material);
-        segment.position.set(-i, 0, 0);
-        snake.push(segment);
-        scene.add(segment);
-    }
-}
-
-function createParticles(count) {
-    const geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-    const material = new THREE.MeshPhongMaterial({
-        color: PARTICLE_COLOR,
-        emissive: PARTICLE_COLOR
-    });
-
-    for(let i = 0; i < count; i++) {
-        const particle = new THREE.Mesh(geometry, material);
-        particle.position.set(
-            (Math.random() - 0.5) * CUBE_SIZE,
-            (Math.random() - 0.5) * CUBE_SIZE,
-            (Math.random() - 0.5) * CUBE_SIZE
-        );
-        particles.push(particle);
-        scene.add(particle);
-    }
-}
-
-function handleKeys(event) {
-    const key = event.key;
-    const currentDir = dir.clone();
     
-    if(key === 'ArrowUp' && currentDir.y === 0) dir.set(0, 1, 0);
-    if(key === 'ArrowDown' && currentDir.y === 0) dir.set(0, -1, 0);
-    if(key === 'ArrowLeft' && currentDir.x === 0) dir.set(-1, 0, 0);
-    if(key === 'ArrowRight' && currentDir.x === 0) dir.set(1, 0, 0);
-    if(key === 'w' && currentDir.z === 0) dir.set(0, 0, 1);
-    if(key === 's' && currentDir.z === 0) dir.set(0, 0, -1);
+    // 6. Handle window resize
+    window.addEventListener('resize', onWindowResize, false);
 }
 
-function animate() {
-    requestAnimationFrame(animate);
-
-    const head = snake[0].position.clone().add(dir.multiplyScalar(speed));
-    
-    ['x', 'y', 'z'].forEach(axis => {
-        head[axis] = ((head[axis] + CUBE_SIZE/2) % CUBE_SIZE) - CUBE_SIZE/2;
-    });
-
-    particles.forEach((particle, index) => {
-        if(head.distanceTo(particle.position) < 1) {
-            scene.remove(particle);
-            particles.splice(index, 1);
-            speed *= 1.02;
-            score++;
-            
-            if(score === 100) {
-                endGame();
-            }
-        }
-    });
-
-    for(let i = snake.length - 1; i > 0; i--) {
-        snake[i].position.copy(snake[i-1].position);
-    }
-    snake[0].position.copy(head);
-
-    renderer.render(scene, camera);
+// Add this new function
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function endGame() {
-    document.getElementById('endMessage').style.display = 'block';
-    document.getElementById('tagline').textContent = 'When The Pieces Fall Into Place, The Magic Unfolds';
-    document.getElementById('company').textContent = '';
+// Keep other functions the same but add these fixes:
+// In createRainbowCube() change materials to:
+const materials = colors.map(color => new THREE.MeshStandardMaterial({
+    color,
+    emissive: color,
+    emissiveIntensity: 1,
+    transparent: true,
+    opacity: 0.3,
+    metalness: 0.9,
+    roughness: 0.1,
+    side: THREE.DoubleSide
+}));
 
-    setTimeout(() => {
-        document.getElementById('tagline').style.transform = 'rotate(360deg)';
-        document.getElementById('tagline').style.transition = 'transform 2s';
-        setTimeout(() => {
-            document.getElementById('tagline').textContent = 'Unsolvablr';
-            document.getElementById('company').textContent = 'a jigsaw company';
-        }, 2000);
-    }, 3000);
-}
+// In createSnake() and createParticles() change materials to:
+new THREE.MeshStandardMaterial({
+    color: SNAKE_COLOR,
+    emissive: SNAKE_COLOR,
+    emissiveIntensity: 2,
+    metalness: 0.5,
+    roughness: 0.1
+});
+
+// Initialize properly
+init();
+animate();
